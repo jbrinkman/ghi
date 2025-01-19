@@ -13,16 +13,14 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// pullrequestCmd represents the pullrequest command
-var pullrequestCmd = &cobra.Command{
-	Use:   "pullrequest",
-	Short: "Retrieve a list of pull requests from a specified Github repository",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
-
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+// prCmd represents the pullrequest command
+var prCmd = &cobra.Command{
+	Use:   "pr",
+	Short: "List pull requests from a specified GitHub repository",
+	Long: `The 'pr' command retrieves and lists pull requests from a specified GitHub repository.
+You can filter the pull requests by author using the --author option. Multiple --author options
+can be used to provide a list of author filters. The command outputs the number, title, author,
+state, and URL of each pull request.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		repo, _ := cmd.Flags().GetString("repo")
 		if repo == "" {
@@ -82,12 +80,12 @@ func contains(slice []string, item string) bool {
 }
 
 func init() {
-	rootCmd.AddCommand(pullrequestCmd)
+	rootCmd.AddCommand(prCmd)
 
 	// Define the --repo flag
-	pullrequestCmd.Flags().StringP("repo", "r", "", "The name of the Github repository (owner/repo)")
-	pullrequestCmd.MarkFlagRequired("repo")
+	prCmd.Flags().StringP("repo", "r", "", "The name of the Github repository (owner/repo)")
+	prCmd.MarkFlagRequired("repo")
 
 	// Define the --author flag
-	pullrequestCmd.Flags().StringArrayP("author", "a", []string{}, "Filter pull requests by author")
+	prCmd.Flags().StringArrayP("author", "a", []string{}, "Filter pull requests by author")
 }
