@@ -7,7 +7,7 @@
 To install the `github-info` CLI, use the following command:
 
 ```sh
-go install github.com/jbrinkman/github-info@latest
+go install github.com/jbrinkman/ghi@latest
 ```
 
 ## Usage

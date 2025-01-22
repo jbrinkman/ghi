@@ -1,5 +1,5 @@
 /*
-Copyright © 2024 NAME HERE <EMAIL ADDRESS>
+Copyright © 2024 Joe Brinkman <joe.brinkman@improving.com>
 */
 package cmd
 
