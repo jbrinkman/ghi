@@ -124,8 +124,8 @@ func printPullRequests(ctx context.Context, client *github.Client, issues []gith
 
 		// Trim the title if it's longer than 25 characters
 		title := *issue.Title
-		if len(title) > 25 {
-			title = title[:22] + "..."
+		if len(title) > 30 {
+			title = title[:27] + "..."
 		}
 
 		t.AppendRow([]interface{}{prNumber, title, *issue.User.Login, *issue.State, len(reviews), approvals})
