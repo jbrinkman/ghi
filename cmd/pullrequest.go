@@ -14,6 +14,7 @@ import (
 	"github.com/google/go-github/github"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 // prCmd represents the pullrequest command
@@ -25,13 +26,26 @@ You can filter the pull requests by author using the --author option. Multiple -
 can be used to provide a list of author filters. The command outputs the number, title, author,
 state, and URL of each pull request.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		repo, _ := cmd.Flags().GetString("repo")
+		configFile, _ := cmd.Flags().GetString("config")
+		if configFile != "" {
+			viper.SetConfigFile(configFile)
+			if err := viper.ReadInConfig(); err != nil {
+				log.Fatalf("Error reading config file: %v", err)
+			}
+		}
+
+		// Bind flags to viper
+		viper.BindPFlag("repo", cmd.Flags().Lookup("repo"))
+		viper.BindPFlag("author", cmd.Flags().Lookup("author"))
+		viper.BindPFlag("state", cmd.Flags().Lookup("state"))
+
+		repo := viper.GetString("repo")
 		if repo == "" {
 			log.Fatal("The --repo flag is required")
 		}
 
-		authors, _ := cmd.Flags().GetStringArray("author")
-		state, _ := cmd.Flags().GetString("state")
+		authors := viper.GetStringSlice("author")
+		state := viper.GetString("state")
 
 		// Convert authors to lowercase for case-insensitive comparison
 		for i, author := range authors {
@@ -125,11 +139,14 @@ func init() {
 
 	// Define the --repo flag
 	prCmd.Flags().StringP("repo", "r", "", "The name of the Github repository (owner/repo)")
-	prCmd.MarkFlagRequired("repo")
+	//prCmd.MarkFlagRequired("repo")
 
 	// Define the --author flag
 	prCmd.Flags().StringArrayP("author", "A", []string{}, "Filter pull requests by author")
 
 	// Define the --state flag
 	prCmd.Flags().StringP("state", "s", "all", "Filter pull requests by state (ALL, OPEN, CLOSED)")
+
+	// Define the --config flag
+	prCmd.Flags().StringP("config", "c", "", "Path to the configuration file")
 }
