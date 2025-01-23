@@ -124,11 +124,14 @@ func printPullRequests(ctx context.Context, client *github.Client, issues []gith
 			}
 		}
 
-		// Count the number of unique reviewers
+		// Count the number of unique reviewers, excluding the PR author
 		uniqueReviewers := make(map[string]struct{})
+		prAuthor := strings.ToLower(*issue.User.Login)
 		for _, review := range reviews {
 			reviewer := strings.ToLower(*review.User.Login)
-			uniqueReviewers[reviewer] = struct{}{}
+			if reviewer != prAuthor {
+				uniqueReviewers[reviewer] = struct{}{}
+			}
 		}
 
 		// Count the number of approvals
