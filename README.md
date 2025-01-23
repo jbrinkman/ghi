@@ -75,6 +75,5 @@ author:
   - "edlng"
 state: "open"
 reviewer:
-  - "reviewer1"
-  - "reviewer2"
+  - "jbrinkman"
 ```
