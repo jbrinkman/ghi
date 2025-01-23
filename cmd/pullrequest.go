@@ -124,6 +124,13 @@ func printPullRequests(ctx context.Context, client *github.Client, issues []gith
 			}
 		}
 
+		// Count the number of unique reviewers
+		uniqueReviewers := make(map[string]struct{})
+		for _, review := range reviews {
+			reviewer := strings.ToLower(*review.User.Login)
+			uniqueReviewers[reviewer] = struct{}{}
+		}
+
 		// Count the number of approvals
 		approvals := 0
 		for _, review := range reviews {
@@ -151,9 +158,9 @@ func printPullRequests(ctx context.Context, client *github.Client, issues []gith
 		}
 
 		if len(reviewers) > 0 {
-			t.AppendRow([]interface{}{prNumber, title, *issue.User.Login, *issue.State, len(reviews), reviewerStatus, approvals})
+			t.AppendRow([]interface{}{prNumber, title, *issue.User.Login, *issue.State, len(uniqueReviewers), reviewerStatus, approvals})
 		} else {
-			t.AppendRow([]interface{}{prNumber, title, *issue.User.Login, *issue.State, len(reviews), approvals})
+			t.AppendRow([]interface{}{prNumber, title, *issue.User.Login, *issue.State, len(uniqueReviewers), approvals})
 		}
 	}
 
