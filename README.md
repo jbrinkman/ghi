@@ -56,6 +56,31 @@ Retrieve pull requests using a configuration file:
 ghi pr --config path/to/config.yaml
 ```
 
+### View Pull Request Details
+
+The `view` subcommand retrieves and displays details of a specific pull request from a specified GitHub repository.
+
+#### Options
+
+- `--repo` or `-r`: The name of the GitHub repository in the format `owner/repo`. This option is required.
+- `--number` or `-n`: The number of the pull request. This option is required.
+- `--web` or `-w`: Open the pull request in the default web browser. This option is optional.
+- `--config` or `-c`: Path to the configuration file in YAML format. This option is optional.
+
+#### Example
+
+View details of pull request #2856 from the `octocat/Hello-World` repository:
+
+```sh
+ghi pr view --repo octocat/Hello-World --number 2856
+```
+
+View details of pull request #2856 from the `octocat/Hello-World` repository in the default web browser:
+
+```sh
+ghi pr view --repo octocat/Hello-World --number 2856 --web
+```
+
 ### Configuration File
 
 You can use a YAML configuration file to specify the options for the `pr` command. Here is an example configuration file:

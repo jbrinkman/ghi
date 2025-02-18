@@ -193,7 +193,7 @@ func init() {
 	prCmd.Flags().StringP("state", "s", "all", "Filter pull requests by state (ALL, OPEN, CLOSED)")
 
 	// Define the --reviewer flag
-	prCmd.Flags().StringArrayP("reviewer", "R", []string{}, "Filter pull requests by reviewer")
+	prCmd.Flags().StringArrayP("reviewer", "R", []string{}, "Highlight pull requests by reviewer")
 
 	// Define the --config flag
 	prCmd.Flags().StringP("config", "c", "", "Path to the configuration file")
