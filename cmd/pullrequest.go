@@ -112,24 +112,24 @@ func printPullRequests(ctx context.Context, client *github.Client, issues []gith
 			log.Fatalf("Error fetching reviews for pull request #%d: %v", *issue.Number, err)
 		}
 
-		// Determine if the PR has been reviewed by the specified reviewers
+		// Determine if the PR has been reviewed or approved by the specified reviewers
 		reviewerStatus := "[ ]"
 		if len(reviewers) > 0 {
 			for _, review := range reviews {
 				reviewer := strings.ToLower(*review.User.Login)
-				if contains(reviewers, reviewer) {
+				if contains(reviewers, reviewer) && (*review.State == "COMMENTED" || *review.State == "APPROVED") {
 					reviewerStatus = "[X]"
 					break
 				}
 			}
 		}
 
-		// Count the number of unique reviewers, excluding the PR author
+		// Count the number of unique reviewers and approvers, excluding the PR author
 		uniqueReviewers := make(map[string]struct{})
 		prAuthor := strings.ToLower(*issue.User.Login)
 		for _, review := range reviews {
 			reviewer := strings.ToLower(*review.User.Login)
-			if reviewer != prAuthor {
+			if reviewer != prAuthor && (*review.State == "COMMENTED" || *review.State == "APPROVED") {
 				uniqueReviewers[reviewer] = struct{}{}
 			}
 		}
