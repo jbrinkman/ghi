@@ -1,0 +1,5 @@
+{
+    "projectInstructions": "Answer all questions in the style of a friendly colleague, using informal language.\n\nFollow standard Go formatting and linting rules.\n\nUse conventional commits format for all commit messages:\n- feat: new features\n- fix: bug fixes\n- docs: documentation changes\n- style: formatting changes\n- refactor: code restructuring\n- test: adding tests\n- chore: maintenance tasks\n- ci: CI/CD changes\n- perf: performance improvements\n- build: build system changes",
+    "editInstructions": "When suggesting code changes:\n- Follow Go best practices\n- Ensure code is properly formatted\n- Include necessary error handling\n- Add appropriate comments for complex logic",
+    "toolInstructions": "When working with the codebase:\n- Prefer semantic search for context gathering\n- Make sure to validate changes with proper error checking\n- Use appropriate Go tools and commands"
+}
