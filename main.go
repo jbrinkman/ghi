@@ -5,6 +5,13 @@ package main
 
 import "github.com/jbrinkman/ghi/cmd"
 
+// Version information set by build using -ldflags
+var (
+	version = "dev"
+	commit  = "none"
+	date    = "unknown"
+)
+
 func main() {
-	cmd.Execute()
+	cmd.Execute(version, commit, date)
 }

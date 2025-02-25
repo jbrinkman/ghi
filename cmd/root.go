@@ -11,18 +11,30 @@ import (
 	"github.com/spf13/viper"
 )
 
-var cfgFile string
+var (
+	cfgFile string
+	// Version information
+	version string
+	commit  string
+	date    string
+)
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "ghi",
-	Short: "A brief description of your application",
-	Long:  `long description.`,
+	Short: "GitHub Info - A command line tool for GitHub repository information",
+	Long: `GitHub Info (ghi) provides a simple command line interface for 
+retrieving and displaying information about GitHub repositories, 
+including pull requests and repository statistics.`,
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
-func Execute() {
+func Execute(ver, comm, dt string) {
+	version = ver
+	commit = comm
+	date = dt
+	
 	err := rootCmd.Execute()
 	if err != nil {
 		os.Exit(1)
@@ -32,10 +44,9 @@ func Execute() {
 func init() {
 	cobra.OnInitialize(initConfig)
 
-	// Here you will define your flags and configuration settings.
-	// Cobra supports persistent flags, which, if defined here,
-	// will be global for your application.
+	rootCmd.Version = fmt.Sprintf("%s (Built: %s, Commit: %s)", version, date, commit)
 
+	// Here you will define your flags and configuration settings.
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.github-info.yaml)")
 
 	// Cobra also supports local flags, which will only run
