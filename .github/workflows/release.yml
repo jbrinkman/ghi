@@ -1,0 +1,44 @@
+name: Manual Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version number (e.g., 1.0.0)'
+        required: true
+        type: string
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.21'
+
+      - name: Run tests
+        run: make test
+
+      - name: Build with version
+        run: make build VERSION=${{ github.event.inputs.version }}
+
+      - name: Create and push tag
+        run: make tag VERSION=${{ github.event.inputs.version }}
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          name: v${{ github.event.inputs.version }}
+          tag_name: v${{ github.event.inputs.version }}
+          generate_release_notes: true
+          draft: false
+          files: |
+            ghi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
