@@ -6,11 +6,11 @@ BINARY_NAME=ghi
 LOCAL_BIN=bin
 GOPATH_BIN=$(shell go env GOPATH)/bin
 
-# Version information
-VERSION ?= dev
-GIT_COMMIT=$(shell git rev-parse --short HEAD)
-BUILD_DATE=$(shell date -u +"%Y-%m-%d")
-LDFLAGS=-ldflags "-X main.version=$(VERSION) -X main.commit=$(GIT_COMMIT) -X main.date=$(BUILD_DATE)"
+# Version information (support both upper and lowercase variables)
+VERSION ?= $(if $(version),$(version),dev)
+DATE ?= $(if $(date),$(date),$(shell date -u +"%Y-%m-%d"))
+COMMIT ?= $(if $(commit),$(commit),$(shell git rev-parse --short HEAD))
+LDFLAGS=-ldflags "-X main.version=$(VERSION) -X main.commit=$(COMMIT) -X main.date=$(DATE)"
 
 .PHONY: all build test clean tag install
 
