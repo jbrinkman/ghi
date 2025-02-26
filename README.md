@@ -102,3 +102,12 @@ state: "open"
 reviewer:
   - "jbrinkman"
 ```
+
+## Global Flags
+
+### Version Information
+To check the version of the CLI tool:
+```sh
+ghi --version
+```
+This displays the current version, build date, and commit hash of your installation.
