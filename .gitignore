@@ -26,3 +26,6 @@ go.work.sum
 
 # AI development files
 .github/ai-tasks.md
+
+# Local build directory
+bin/
