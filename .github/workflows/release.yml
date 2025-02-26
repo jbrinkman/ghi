@@ -8,6 +8,10 @@ on:
         required: true
         type: string
 
+permissions:
+  contents: write    # Required for creating tags and releases
+  packages: write    # Required for potential package publishing
+
 jobs:
   release:
     runs-on: ubuntu-latest
