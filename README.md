@@ -66,6 +66,7 @@ The `view` subcommand retrieves and displays details of a specific pull request 
 - `--number` or `-n`: The number of the pull request. This option is required.
 - `--web` or `-w`: Open the pull request in the default web browser. This option is optional.
 - `--config` or `-c`: Path to the configuration file in YAML format. This option is optional.
+- `--log` or `-l`: Log that you're reviewing this pull request. This stores the review in your local database. This option is optional.
 
 #### Example
 
@@ -75,11 +76,47 @@ View details of pull request #2856 from the `octocat/Hello-World` repository:
 ghi pr view --repo octocat/Hello-World --number 2856
 ```
 
+View details and log your review of pull request #2856:
+
+```sh
+ghi pr view --repo octocat/Hello-World --number 2856 --log
+```
+
 View details of pull request #2856 from the `octocat/Hello-World` repository in the default web browser:
 
 ```sh
 ghi pr view --repo octocat/Hello-World --number 2856 --web
 ```
+
+### Authentication and Database Settings
+
+The `auth` command allows you to configure settings for the review tracking database.
+
+#### Subcommands
+
+##### Set Credentials
+
+```sh
+ghi auth set [flags]
+```
+
+Flags:
+- `--db-url`: The Turso/LibSQL database URL.
+- `--auth-token`: Authentication token for the database.
+- `--username`: Your username for review tracking.
+
+Example:
+```sh
+ghi auth set --db-url "libsql://your-database.turso.io" --auth-token "your-token" --username "your-github-username"
+```
+
+##### View Current Settings
+
+```sh
+ghi auth info
+```
+
+This displays your current database connection settings.
 
 ### Configuration File
 
@@ -111,3 +148,47 @@ To check the version of the CLI tool:
 ghi --version
 ```
 This displays the current version, build date, and commit hash of your installation.
+
+## Database Setup
+
+GitHub Info CLI uses Turso/LibSQL to track your code reviews locally. This enables you to maintain a history of pull requests you've reviewed.
+
+### Setting Up Your Turso Database
+
+1. Create a Turso account at [turso.tech](https://turso.tech).
+
+2. Create a database:
+   ```sh
+   turso db create github-info
+   ```
+
+3. Create an authentication token:
+   ```sh
+   turso db tokens create github-info
+   ```
+
+4. Configure GitHub Info CLI with your database details:
+   ```sh
+   ghi auth set --db-url "libsql://github-info-[your-username].turso.io" --auth-token "[your-token]" --username "[your-github-username]"
+   ```
+
+### Database Schema
+
+The database automatically creates the following table:
+
+```sql
+CREATE TABLE reviews (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    repo TEXT NOT NULL,
+    pr_number INTEGER NOT NULL,
+    reviewer TEXT NOT NULL,
+    timestamp DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(repo, pr_number, reviewer, timestamp)
+);
+```
+
+This schema tracks:
+- Repository name
+- Pull request number
+- Reviewer (your username)
+- Timestamp of the review

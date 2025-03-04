@@ -4,8 +4,11 @@ Copyright © 2024 Joe Brinkman <joe.brinkman@improving.com>
 package cmd
 
 import (
+	"bufio"
 	"fmt"
 	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -35,9 +38,54 @@ func Execute(ver, comm, dt string) {
 	commit = comm
 	date = dt
 	
+	// Load environment variables from ~/.ghi/.env if it exists
+	loadEnvFile()
+
 	err := rootCmd.Execute()
 	if err != nil {
 		os.Exit(1)
+	}
+}
+
+// loadEnvFile loads environment variables from ~/.ghi/.env file if it exists
+func loadEnvFile() {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return // Silently fail if we can't get home dir
+	}
+
+	envFile := filepath.Join(home, ".ghi", ".env")
+	if _, err := os.Stat(envFile); os.IsNotExist(err) {
+		return // File doesn't exist, that's okay
+	}
+
+	// Read and parse the .env file
+	file, err := os.Open(envFile)
+	if err != nil {
+		return // Can't open file, just skip
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		line := scanner.Text()
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+
+		// Split on first equals sign only
+		parts := strings.SplitN(line, "=", 2)
+		if len(parts) != 2 {
+			continue
+		}
+
+		key := strings.TrimSpace(parts[0])
+		value := strings.TrimSpace(parts[1])
+
+		// Only set if not already set in environment
+		if os.Getenv(key) == "" {
+			os.Setenv(key, value)
+		}
 	}
 }
 

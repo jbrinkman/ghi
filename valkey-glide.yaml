@@ -2,12 +2,10 @@ repo: "valkey-io/valkey-glide"
 author:
   - "jbrinkman"
   - "Yury-Fridlyand"
-  - "acarbonetto"
   - "jamesx-improving"
   - "jonathanl-bq"
   - tjzhang-BQ
   - prateek-kumar-improving
-  - cyip10
   - yipin-chen
   - edlng
 state: "open"
