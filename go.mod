@@ -6,6 +6,7 @@ require (
 	github.com/jedib0t/go-pretty/v6 v6.6.5
 	github.com/spf13/cobra v1.8.1
 	github.com/spf13/viper v1.19.0
+	github.com/tursodatabase/libsql-client-go v0.0.0-20240902231107-85af5b9d094d
 )
 
 require (
@@ -14,7 +15,6 @@ require (
 	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/mattn/go-runewidth v0.0.15 // indirect
 	github.com/rivo/uniseg v0.2.0 // indirect
-	github.com/tursodatabase/libsql-client-go v0.0.0-20240902231107-85af5b9d094d // indirect
 )
 
 require (

@@ -37,7 +37,7 @@ func Execute(ver, comm, dt string) {
 	version = ver
 	commit = comm
 	date = dt
-	
+
 	// Load environment variables from ~/.ghi/.env if it exists
 	loadEnvFile()
 

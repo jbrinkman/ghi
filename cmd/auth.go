@@ -109,7 +109,7 @@ var authInfoCmd = &cobra.Command{
 		} else {
 			fmt.Println("Username: Not set")
 		}
-		
+
 		// Check for config file
 		home, err := os.UserHomeDir()
 		if err == nil {

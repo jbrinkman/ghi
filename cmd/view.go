@@ -150,7 +150,7 @@ func showPreviousReviews(ctx context.Context, repo string, prNumber int) {
 	fmt.Println("\nReview History:")
 	fmt.Println("----------------")
 	for _, review := range reviews {
-		fmt.Printf("- %s by %s at %s\n", 
+		fmt.Printf("- %s by %s at %s\n",
 			repo,
 			review.Reviewer,
 			review.Timestamp.Format(time.RFC1123))
@@ -192,7 +192,7 @@ func init() {
 
 	// Define the --web flag for viewCmd
 	viewCmd.Flags().BoolP("web", "w", false, "Open the pull request in the default web browser")
-	
+
 	// Define the --log flag for viewCmd
 	viewCmd.Flags().BoolP("log", "l", false, "Log that you are reviewing this PR")
 }
