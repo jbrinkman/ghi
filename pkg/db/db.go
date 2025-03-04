@@ -90,6 +90,30 @@ func (c *Client) LogReview(ctx context.Context, repo string, prNumber int, revie
 	return nil
 }
 
+// parseTimestamp attempts to parse a timestamp string using multiple formats
+func parseTimestamp(timestamp string) (time.Time, error) {
+	// Try different time formats, from most specific to least specific
+	formats := []string{
+		time.RFC3339,           // "2006-01-02T15:04:05Z07:00"
+		"2006-01-02T15:04:05Z", // ISO8601 without timezone
+		"2006-01-02 15:04:05",  // Simple date-time format
+		"2006-01-02",           // Just the date
+	}
+
+	var err error
+	var t time.Time
+
+	for _, format := range formats {
+		t, err = time.Parse(format, timestamp)
+		if err == nil {
+			return t, nil
+		}
+	}
+
+	// If we get here, none of the formats worked
+	return time.Time{}, fmt.Errorf("failed to parse timestamp '%s': %w", timestamp, err)
+}
+
 // GetReviews retrieves reviews for a specific PR
 func (c *Client) GetReviews(ctx context.Context, repo string, prNumber int) ([]Review, error) {
 	rows, err := c.db.QueryContext(ctx,
@@ -110,8 +134,57 @@ func (c *Client) GetReviews(ctx context.Context, repo string, prNumber int) ([]R
 			return nil, fmt.Errorf("failed to scan review row: %w", err)
 		}
 
-		// Parse timestamp
-		t, err := time.Parse("2006-01-02 15:04:05", timestamp)
+		// Parse timestamp with the flexible parser
+		t, err := parseTimestamp(timestamp)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse timestamp: %w", err)
+		}
+		review.Timestamp = t
+
+		reviews = append(reviews, review)
+	}
+
+	return reviews, nil
+}
+
+// GetReviewsByDateRange retrieves reviews within the specified date range
+func (c *Client) GetReviewsByDateRange(ctx context.Context, repo string, startDate, endDate time.Time) ([]Review, error) {
+	// Construct query based on whether we have a repo filter
+	var query string
+	var args []interface{}
+
+	if repo != "" {
+		query = `SELECT id, repo, pr_number, reviewer, timestamp 
+				FROM reviews 
+				WHERE repo = ? AND timestamp >= ? AND timestamp <= ? 
+				ORDER BY timestamp DESC`
+		args = []interface{}{repo, startDate.Format("2006-01-02"), endDate.Format("2006-01-02 23:59:59")}
+	} else {
+		query = `SELECT id, repo, pr_number, reviewer, timestamp 
+				FROM reviews 
+				WHERE timestamp >= ? AND timestamp <= ? 
+				ORDER BY timestamp DESC`
+		args = []interface{}{startDate.Format("2006-01-02"), endDate.Format("2006-01-02 23:59:59")}
+	}
+
+	rows, err := c.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get reviews by date range: %w", err)
+	}
+	defer rows.Close()
+
+	var reviews []Review
+	for rows.Next() {
+		var review Review
+		var timestamp string
+
+		err := rows.Scan(&review.ID, &review.Repo, &review.PRNumber, &review.Reviewer, &timestamp)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan review row: %w", err)
+		}
+
+		// Parse timestamp with the flexible parser
+		t, err := parseTimestamp(timestamp)
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse timestamp: %w", err)
 		}

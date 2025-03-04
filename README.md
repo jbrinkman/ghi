@@ -88,6 +88,33 @@ View details of pull request #2856 from the `octocat/Hello-World` repository in 
 ghi pr view --repo octocat/Hello-World --number 2856 --web
 ```
 
+### Review History
+
+The `review` subcommand displays a list of pull requests you've reviewed within a specified date range. This data is pulled from your local database where reviews are logged when using the `--log` flag with the view command.
+
+#### Options
+
+- `--repo` or `-r`: Filter reviews by repository in the format `owner/repo`. This option is optional.
+- `--start-date` or `-s`: The start date for the review search in YYYY-MM-DD format. If not provided, defaults to 30 days ago.
+- `--end-date` or `-e`: The end date for the review search in YYYY-MM-DD format. If not provided, defaults to today.
+
+#### Example
+
+Display all reviews from the last 30 days:
+```sh
+ghi pr review
+```
+
+Display reviews between specific dates:
+```sh
+ghi pr review --start-date 2023-01-01 --end-date 2023-12-31
+```
+
+Display reviews for a specific repository between specific dates:
+```sh
+ghi pr review --repo octocat/Hello-World --start-date 2023-01-01 --end-date 2023-12-31
+```
+
 ### Authentication and Database Settings
 
 The `auth` command allows you to configure settings for the review tracking database.
