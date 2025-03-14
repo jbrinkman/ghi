@@ -10,12 +10,14 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/jbrinkman/ghi/pkg/logger"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
 
 var (
 	cfgFile string
+	debug   bool
 	// Version information
 	version string
 	commit  string
@@ -29,6 +31,10 @@ var rootCmd = &cobra.Command{
 	Long: `GitHub Info (ghi) provides a simple command line interface for 
 retrieving and displaying information about GitHub repositories, 
 including pull requests and repository statistics.`,
+	PersistentPreRun: func(cmd *cobra.Command, args []string) {
+		// Set up logging based on debug flag
+		logger.SetupLogging(debug)
+	},
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
@@ -96,6 +102,12 @@ func init() {
 
 	// Here you will define your flags and configuration settings.
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.github-info.yaml)")
+
+	// Define debug flag with both long and short forms in a single call
+	rootCmd.PersistentFlags().BoolVarP(&debug, "debug", "d", false, "Enable debug logging to file")
+
+	// Bind debug flag to viper
+	viper.BindPFlag("debug", rootCmd.PersistentFlags().Lookup("debug"))
 
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.
