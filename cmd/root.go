@@ -4,7 +4,6 @@ Copyright © 2024 Joe Brinkman <joe.brinkman@improving.com>
 package cmd
 
 import (
-	"bufio"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -27,13 +26,28 @@ var (
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "ghi",
-	Short: "GitHub Info - A command line tool for GitHub repository information",
-	Long: `GitHub Info (ghi) provides a simple command line interface for 
-retrieving and displaying information about GitHub repositories, 
-including pull requests and repository statistics.`,
+	Short: "GitHub Information CLI provides tools for interacting with GitHub",
+	Long: `GitHub Information CLI (ghi) provides tools for interacting with GitHub,
+including viewing pull requests, managing reviews, and more.
+
+Before using commands that interact with GitHub APIs, make sure to:
+1. Set your GitHub username: ghi auth set --username YOUR_USERNAME
+2. Set your GitHub token: ghi auth set --token YOUR_TOKEN
+
+You can create a GitHub token at https://github.com/settings/tokens
+Using a token increases your API rate limit from 60 to 5000 requests per hour.`,
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
-		// Set up logging based on debug flag
-		logger.SetupLogging(debug)
+		// Enable debug logging if flag is set
+		debug := viper.GetBool("debug")
+		if debug {
+			logger.SetDebug(true)
+			logger.Debug("Debug logging enabled")
+		}
+
+		// Load environment variables from .ghi/env file
+		if envFile := filepath.Join(os.Getenv("HOME"), ".ghi", "env"); fileExists(envFile) {
+			loadEnvFile(envFile)
+		}
 	},
 }
 
@@ -44,54 +58,9 @@ func Execute(ver, comm, dt string) {
 	commit = comm
 	date = dt
 
-	// Load environment variables from ~/.ghi/.env if it exists
-	loadEnvFile()
-
 	err := rootCmd.Execute()
 	if err != nil {
 		os.Exit(1)
-	}
-}
-
-// loadEnvFile loads environment variables from ~/.ghi/.env file if it exists
-func loadEnvFile() {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return // Silently fail if we can't get home dir
-	}
-
-	envFile := filepath.Join(home, ".ghi", ".env")
-	if _, err := os.Stat(envFile); os.IsNotExist(err) {
-		return // File doesn't exist, that's okay
-	}
-
-	// Read and parse the .env file
-	file, err := os.Open(envFile)
-	if err != nil {
-		return // Can't open file, just skip
-	}
-	defer file.Close()
-
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		line := scanner.Text()
-		if line == "" || strings.HasPrefix(line, "#") {
-			continue
-		}
-
-		// Split on first equals sign only
-		parts := strings.SplitN(line, "=", 2)
-		if len(parts) != 2 {
-			continue
-		}
-
-		key := strings.TrimSpace(parts[0])
-		value := strings.TrimSpace(parts[1])
-
-		// Only set if not already set in environment
-		if os.Getenv(key) == "" {
-			os.Setenv(key, value)
-		}
 	}
 }
 
@@ -136,4 +105,37 @@ func initConfig() {
 	if err := viper.ReadInConfig(); err == nil {
 		fmt.Fprintln(os.Stderr, "Using config file:", viper.ConfigFileUsed())
 	}
+}
+
+// loadEnvFile loads environment variables from the specified file
+func loadEnvFile(filename string) error {
+	data, err := os.ReadFile(filename)
+	if err != nil {
+		return err
+	}
+
+	for _, line := range strings.Split(string(data), "\n") {
+		// Skip empty lines and comments
+		if line = strings.TrimSpace(line); line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+
+		parts := strings.SplitN(line, "=", 2)
+		if len(parts) != 2 {
+			continue
+		}
+
+		key := strings.TrimSpace(parts[0])
+		value := strings.TrimSpace(parts[1])
+
+		os.Setenv(key, value)
+	}
+
+	return nil
+}
+
+// fileExists checks if a file exists
+func fileExists(filename string) bool {
+	_, err := os.Stat(filename)
+	return err == nil
 }

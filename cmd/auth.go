@@ -1,4 +1,6 @@
-// Package cmd implements the commands for the GitHub Info CLI
+/*
+Copyright © 2024 Joe Brinkman <joe.brinkman@improving.com>
+*/
 package cmd
 
 import (
@@ -6,154 +8,101 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 
-	"github.com/jbrinkman/ghi/pkg/logger"
 	"github.com/spf13/cobra"
 )
 
 var authCmd = &cobra.Command{
 	Use:   "auth",
-	Short: "Configure authentication settings",
-	Long:  `The 'auth' command configures authentication settings for database connections.`,
-	Run: func(cmd *cobra.Command, args []string) {
-		logger.Debug("Auth command invoked without subcommand")
-		fmt.Println("Use one of the subcommands: 'set' or 'info'")
-		cmd.Help()
-	},
+	Short: "Manage authentication settings",
+	Long: `The auth command allows you to manage authentication settings.
+For GitHub access, you'll need to set your token to avoid rate limiting.
+You can create a token at https://github.com/settings/tokens`,
 }
 
 var authSetCmd = &cobra.Command{
 	Use:   "set",
 	Short: "Set authentication settings",
-	Long:  `Set authentication settings for database connection.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		logger.Debug("Auth set command invoked with args: %v", args)
-
-		dbURL, _ := cmd.Flags().GetString("db-url")
-		authToken, _ := cmd.Flags().GetString("auth-token")
 		username, _ := cmd.Flags().GetString("username")
+		token, _ := cmd.Flags().GetString("token")
+		dburl, _ := cmd.Flags().GetString("db-url")
+		dbtoken, _ := cmd.Flags().GetString("db-token")
 
-		logger.Debug("Flags - DB URL: %s, Auth Token: [redacted], Username: %s",
-			dbURL, username)
-
-		if dbURL == "" && authToken == "" && username == "" {
-			logger.Debug("No flags provided")
-			log.Fatal("At least one flag must be provided")
+		// Create config directory if it doesn't exist
+		configDir := filepath.Join(os.Getenv("HOME"), ".ghi")
+		if err := os.MkdirAll(configDir, 0755); err != nil {
+			log.Fatalf("Error creating config directory: %v", err)
 		}
 
-		// Create .ghi directory in user's home directory if it doesn't exist
-		home, err := os.UserHomeDir()
-		if err != nil {
-			logger.Debug("Failed to get user home directory: %v", err)
-			log.Fatalf("Error getting user home directory: %v", err)
-		}
+		// Update environment file
+		envFile := filepath.Join(configDir, "env")
+		env := make(map[string]string)
 
-		configDir := filepath.Join(home, ".ghi")
-		logger.Debug("Config directory: %s", configDir)
-
-		if _, err := os.Stat(configDir); os.IsNotExist(err) {
-			logger.Debug("Creating config directory: %s", configDir)
-			if err := os.MkdirAll(configDir, 0700); err != nil {
-				logger.Debug("Failed to create config directory: %v", err)
-				log.Fatalf("Error creating config directory: %v", err)
+		// Read existing env file if it exists
+		if data, err := os.ReadFile(envFile); err == nil {
+			for _, line := range strings.Split(string(data), "\n") {
+				parts := strings.SplitN(line, "=", 2)
+				if len(parts) == 2 {
+					env[parts[0]] = parts[1]
+				}
 			}
 		}
 
-		// Create or append to the .env file
-		envFile := filepath.Join(configDir, ".env")
-		logger.Debug("Environment file path: %s", envFile)
+		// Update values
+		if username != "" {
+			env["GHI_USERNAME"] = username
+		}
+		if token != "" {
+			env["GHI_GITHUB_TOKEN"] = token
+		}
+		if dburl != "" {
+			env["GHI_DB_URL"] = dburl
+		}
+		if dbtoken != "" {
+			env["GHI_AUTH_TOKEN"] = dbtoken
+		}
 
-		f, err := os.OpenFile(envFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
+		// Write back to file
+		f, err := os.Create(envFile)
 		if err != nil {
-			logger.Debug("Failed to open env file: %v", err)
-			log.Fatalf("Error opening env file: %v", err)
+			log.Fatalf("Error creating env file: %v", err)
 		}
 		defer f.Close()
 
-		// Write settings to file and set environment variables
-		if dbURL != "" {
-			logger.Debug("Setting database URL")
-			if _, err := f.WriteString(fmt.Sprintf("GHI_DB_URL=%s\n", dbURL)); err != nil {
-				logger.Debug("Failed to write DB URL: %v", err)
-				log.Fatalf("Error writing db URL: %v", err)
-			}
-			os.Setenv("GHI_DB_URL", dbURL)
-			fmt.Println("Database URL set successfully")
+		for k, v := range env {
+			fmt.Fprintf(f, "%s=%s\n", k, v)
 		}
 
-		if authToken != "" {
-			logger.Debug("Setting auth token")
-			if _, err := f.WriteString(fmt.Sprintf("GHI_AUTH_TOKEN=%s\n", authToken)); err != nil {
-				logger.Debug("Failed to write auth token: %v", err)
-				log.Fatalf("Error writing auth token: %v", err)
-			}
-			os.Setenv("GHI_AUTH_TOKEN", authToken)
-			fmt.Println("Auth token set successfully")
+		fmt.Println("Authentication settings updated successfully")
+		if token != "" {
+			fmt.Println("GitHub token set - API requests will now use authenticated rate limits (5000/hour)")
 		}
-
-		if username != "" {
-			logger.Debug("Setting username: %s", username)
-			if _, err := f.WriteString(fmt.Sprintf("GHI_USERNAME=%s\n", username)); err != nil {
-				logger.Debug("Failed to write username: %v", err)
-				log.Fatalf("Error writing username: %v", err)
-			}
-			os.Setenv("GHI_USERNAME", username)
-			fmt.Println("Username set successfully")
-		}
-
-		logger.Debug("Auth settings successfully updated")
 	},
 }
 
-var authInfoCmd = &cobra.Command{
-	Use:   "info",
+var authShowCmd = &cobra.Command{
+	Use:   "show",
 	Short: "Show current authentication settings",
-	Long:  `Display current authentication settings used for database connections.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		logger.Debug("Auth info command invoked")
+		fmt.Printf("Username: %s\n", os.Getenv("GHI_USERNAME"))
 
-		// Read environment variables
-		dbURL := os.Getenv("GHI_DB_URL")
-		authToken := os.Getenv("GHI_AUTH_TOKEN")
-		username := os.Getenv("GHI_USERNAME")
-
-		logger.Debug("Current settings - DB URL: %s, Auth Token: [presence: %v], Username: %s",
-			dbURL, authToken != "", username)
-
-		fmt.Println("Current Authentication Settings:")
-		if dbURL != "" {
-			fmt.Printf("Database URL: %s\n", dbURL)
+		// Don't show the full token for security
+		token := os.Getenv("GHI_GITHUB_TOKEN")
+		if token != "" {
+			fmt.Printf("GitHub Token: %s...%s\n", token[:4], token[len(token)-4:])
 		} else {
-			fmt.Println("Database URL: Not set")
-			logger.Debug("Database URL is not set")
+			fmt.Println("GitHub Token: not set")
 		}
 
-		if authToken != "" {
-			fmt.Println("Auth Token: [Set]")
-		} else {
-			fmt.Println("Auth Token: Not set")
-			logger.Debug("Auth token is not set")
-		}
+		fmt.Printf("Database URL: %s\n", os.Getenv("GHI_DB_URL"))
 
-		if username != "" {
-			fmt.Printf("Username: %s\n", username)
+		dbToken := os.Getenv("GHI_AUTH_TOKEN")
+		if dbToken != "" {
+			fmt.Printf("Database Token: %s...%s\n", dbToken[:4], dbToken[len(dbToken)-4:])
 		} else {
-			fmt.Println("Username: Not set")
-			logger.Debug("Username is not set")
-		}
-
-		// Check for config file
-		home, err := os.UserHomeDir()
-		if err == nil {
-			configFile := filepath.Join(home, ".ghi", ".env")
-			if _, err := os.Stat(configFile); err == nil {
-				fmt.Printf("\nCredentials file: %s\n", configFile)
-				logger.Debug("Credentials file found: %s", configFile)
-			} else {
-				logger.Debug("Credentials file not found: %v", err)
-			}
-		} else {
-			logger.Debug("Failed to get user home directory: %v", err)
+			fmt.Println("Database Token: not set")
 		}
 	},
 }
@@ -161,10 +110,11 @@ var authInfoCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(authCmd)
 	authCmd.AddCommand(authSetCmd)
-	authCmd.AddCommand(authInfoCmd)
+	authCmd.AddCommand(authShowCmd)
 
-	// Define flags for authSetCmd
-	authSetCmd.Flags().String("db-url", "", "Turso/LibSQL database URL")
-	authSetCmd.Flags().String("auth-token", "", "Authentication token for database")
-	authSetCmd.Flags().String("username", "", "Your username for review tracking")
+	// Add flags for auth set command
+	authSetCmd.Flags().StringP("username", "u", "", "Your GitHub username")
+	authSetCmd.Flags().StringP("token", "t", "", "Your GitHub personal access token")
+	authSetCmd.Flags().String("db-url", "", "Database URL")
+	authSetCmd.Flags().String("db-token", "", "Database authentication token")
 }

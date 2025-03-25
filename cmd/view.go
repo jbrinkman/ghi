@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/google/go-github/v69/github"
+	"github.com/jbrinkman/ghi/pkg/clients"
 	"github.com/jbrinkman/ghi/pkg/db"
 	"github.com/jbrinkman/ghi/pkg/logger"
 	"github.com/spf13/cobra"
@@ -60,13 +61,21 @@ var viewCmd = &cobra.Command{
 		}
 		owner, repoName := parts[0], parts[1]
 
-		// Create a new Github client
+		// Create a GitHub client to fetch PR and issue data
+		client, err := clients.NewGitHubClient()
+		if err != nil {
+			log.Fatalf("Failed to create GitHub client: %v", err)
+		 }
+
+		// Create context
 		ctx := context.Background()
-		client := github.NewClient(nil)
+
+		// Fetch the PR data
+		var pr *github.PullRequest
 
 		// Get the pull request details
 		logger.Debug("Fetching pull request details for %s/%s #%d", owner, repoName, number)
-		pr, _, err := client.PullRequests.Get(ctx, owner, repoName, number)
+		pr, _, err = client.PullRequests.Get(ctx, owner, repoName, number)
 		if err != nil {
 			log.Fatalf("Error fetching pull request #%d: %v", number, err)
 		}

@@ -196,6 +196,56 @@ func (c *Client) GetReviewsByDateRange(ctx context.Context, repo string, startDa
 	return reviews, nil
 }
 
+// GetReviewsByReviewer retrieves all reviews by a specific reviewer, optionally filtered by repository
+func (c *Client) GetReviewsByReviewer(ctx context.Context, reviewer string, repo string) ([]Review, error) {
+	var query string
+	var args []interface{}
+
+	if repo != "" {
+		query = `SELECT id, repo, pr_number, reviewer, timestamp 
+				FROM reviews 
+				WHERE reviewer = ? AND repo = ? 
+				ORDER BY timestamp DESC`
+		args = []interface{}{reviewer, repo}
+	} else {
+		query = `SELECT id, repo, pr_number, reviewer, timestamp 
+				FROM reviews 
+				WHERE reviewer = ? 
+				ORDER BY timestamp DESC`
+		args = []interface{}{reviewer}
+	}
+
+	rows, err := c.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get reviews by reviewer: %w", err)
+	}
+	defer rows.Close()
+
+	var reviews []Review
+	for rows.Next() {
+		var review Review
+		var timestamp string
+		err := rows.Scan(&review.ID, &review.Repo, &review.PRNumber, &review.Reviewer, &timestamp)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan review row: %w", err)
+		}
+
+		// Parse timestamp with the flexible parser
+		t, err := parseTimestamp(timestamp)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse timestamp: %w", err)
+		}
+		review.Timestamp = t
+		reviews = append(reviews, review)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating review rows: %w", err)
+	}
+
+	return reviews, nil
+}
+
 // Close closes the database connection
 func (c *Client) Close() error {
 	return c.db.Close()
