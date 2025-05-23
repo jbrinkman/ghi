@@ -15,6 +15,7 @@ import (
 	"github.com/jbrinkman/ghi/pkg/clients"
 	ghiGithub "github.com/jbrinkman/ghi/pkg/github"
 	"github.com/jbrinkman/ghi/pkg/logger"
+	"github.com/jbrinkman/ghi/pkg/ui"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -103,43 +104,62 @@ state, and URL of each pull request.`,
 		}
 
 		// Search pull requests with retry on rate limit
-		searchOpts := &github.SearchOptions{}
 		var result *github.IssuesSearchResult
-		for attempts := 0; attempts < 3; attempts++ {
-			result, _, err = client.Search.Issues(ctx, query, searchOpts)
-			if err != nil {
-				if _, ok := err.(*github.RateLimitError); ok {
-					if attempts < 2 {
-						// On rate limit, wait and retry
-						logger.Debug("Hit rate limit, waiting 5 seconds before retry...")
-						time.Sleep(5 * time.Second)
-						continue
+		scanPRs := func() error {
+			searchOpts := &github.SearchOptions{}
+			for attempts := 0; attempts < 3; attempts++ {
+				var err error
+				result, _, err = client.Search.Issues(ctx, query, searchOpts)
+				if err != nil {
+					if _, ok := err.(*github.RateLimitError); ok {
+						if attempts < 2 {
+							// On rate limit, wait and retry
+							logger.Debug("Hit rate limit, waiting 5 seconds before retry...")
+							time.Sleep(5 * time.Second)
+							continue
+						}
+						return fmt.Errorf("GitHub API rate limit exceeded. Try setting GHI_GITHUB_TOKEN environment variable")
 					}
-					log.Fatalf("GitHub API rate limit exceeded. Try setting GHI_GITHUB_TOKEN environment variable.")
+					return fmt.Errorf("error searching pull requests: %w", err)
 				}
-				log.Fatalf("Error searching pull requests: %v", err)
+				return nil
 			}
-			break
+			return nil
+		}
+
+		// Show spinner while fetching PRs
+		err = ui.WithSpinner(ctx, "Fetching pull requests", scanPRs)
+		if err != nil {
+			log.Fatal(err)
 		}
 
 		if debug {
 			logger.Debug("Found %d pull requests", len(result.Issues))
 		}
 
-		// Use the new fluent API to process and display pull requests
-		collection := ghiGithub.NewPRCollection(ctx, client, owner, repoName, debug)
-		collection.WithDraftOption(draftOption)
+		// Process PRs with a spinner
+		processPRs := func() error {
+			collection := ghiGithub.NewPRCollection(ctx, client, owner, repoName, debug)
+			collection.WithDraftOption(draftOption)
 
-		// Process the data in a pipeline
-		collection.FetchIssues(result.Issues)
-		collection.EnrichWithPullRequests()
-		collection.EnrichWithReviews(reviewers)
-		collection.FilterDrafts()
+			// Process the data in a pipeline
+			collection.FetchIssues(result.Issues)
+			collection.EnrichWithPullRequests()
+			collection.EnrichWithReviews(reviewers)
+			collection.FilterDrafts()
 
-		// Create a display handler and render the table
-		display := ghiGithub.NewPRDisplay(collection)
-		display.WithReviewers(len(reviewers) > 0)
-		display.RenderTable()
+			// Create a display handler and render the table
+			display := ghiGithub.NewPRDisplay(collection)
+			display.WithReviewers(len(reviewers) > 0)
+			display.RenderTable()
+			return nil
+		}
+
+		// Show spinner while processing PRs
+		err = ui.WithSpinner(ctx, "Processing pull requests", processPRs)
+		if err != nil {
+			log.Fatal(err)
+		}
 	},
 }
 
