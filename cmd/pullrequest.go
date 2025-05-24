@@ -8,12 +8,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"os"
 	"strings"
 	"time"
 
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/google/go-github/v69/github"
 	"github.com/jbrinkman/ghi/pkg/clients"
-	ghiGithub "github.com/jbrinkman/ghi/pkg/github"
+	gh "github.com/jbrinkman/ghi/pkg/github"
 	"github.com/jbrinkman/ghi/pkg/logger"
 	"github.com/jbrinkman/ghi/pkg/ui"
 	"github.com/spf13/cobra"
@@ -105,7 +107,7 @@ state, and URL of each pull request.`,
 
 		// Search pull requests with retry on rate limit
 		var result *github.IssuesSearchResult
-		scanPRs := func() error {
+		scanPRs := func() (*github.IssuesSearchResult, error) {
 			searchOpts := &github.SearchOptions{}
 			for attempts := 0; attempts < 3; attempts++ {
 				var err error
@@ -118,47 +120,70 @@ state, and URL of each pull request.`,
 							time.Sleep(5 * time.Second)
 							continue
 						}
-						return fmt.Errorf("GitHub API rate limit exceeded. Try setting GHI_GITHUB_TOKEN environment variable")
+						return nil, fmt.Errorf("GitHub API rate limit exceeded. Try setting GHI_GITHUB_TOKEN environment variable")
 					}
-					return fmt.Errorf("error searching pull requests: %w", err)
+					return nil, fmt.Errorf("error searching pull requests: %w", err)
 				}
-				return nil
+				return result, nil
 			}
-			return nil
+			return nil, fmt.Errorf("max retries exceeded")
 		}
 
 		// Show spinner while fetching PRs
-		err = ui.WithSpinner(ctx, "Fetching pull requests", scanPRs)
+		logger.Debug("Starting to fetch pull requests with query: %s", query)
+		result, err = ui.WithSpinner(ctx, "Fetching pull requests", scanPRs)
 		if err != nil {
+			logger.Debug("Error fetching pull requests: %v", err)
 			log.Fatal(err)
 		}
+		logger.Debug("Found %d issues from search", len(result.Issues))
 
 		if debug {
 			logger.Debug("Found %d pull requests", len(result.Issues))
 		}
 
 		// Process PRs with a spinner
-		processPRs := func() error {
-			collection := ghiGithub.NewPRCollection(ctx, client, owner, repoName, debug)
+		processPRs := func() ([]*gh.PullRequestData, error) {
+			logger.Debug("Creating new PR collection for %s/%s", owner, repoName)
+			collection := gh.NewPRCollection(ctx, client, owner, repoName, debug)
 			collection.WithDraftOption(draftOption)
 
 			// Process the data in a pipeline
+			logger.Debug("Fetching issues (count: %d)", len(result.Issues))
 			collection.FetchIssues(result.Issues)
+			logger.Debug("Enriching with pull requests")
 			collection.EnrichWithPullRequests()
+			logger.Debug("Enriching with reviews for reviewers: %v", reviewers)
 			collection.EnrichWithReviews(reviewers)
+			logger.Debug("Filtering drafts with option: %s", draftOption)
 			collection.FilterDrafts()
 
-			// Create a display handler and render the table
-			display := ghiGithub.NewPRDisplay(collection)
-			display.WithReviewers(len(reviewers) > 0)
-			display.RenderTable()
-			return nil
+			logger.Debug("Processing complete. Found %d PRs after filtering", len(collection.Items))
+			for i, item := range collection.Items {
+				if i >= 5 { // Only show first 5 items
+					logger.Debug("  ... and %d more items", len(collection.Items)-5)
+					break
+				}
+				if item != nil && item.Issue != nil && item.Issue.Number != nil {
+					logger.Debug("  PR #%d: %s", *item.Issue.Number, *item.Issue.Title)
+				}
+			}
+
+			return collection.Items, nil
 		}
 
 		// Show spinner while processing PRs
-		err = ui.WithSpinner(ctx, "Processing pull requests", processPRs)
+		prItems, err := ui.WithSpinner(ctx, "Processing pull requests", processPRs)
 		if err != nil {
 			log.Fatal(err)
+		}
+
+		// Create and show the interactive table
+		prTable := ui.NewPRTable(prItems)
+		p := tea.NewProgram(prTable, tea.WithAltScreen())
+		if _, err := p.Run(); err != nil {
+			fmt.Fprintf(os.Stderr, "Error running PR table: %v\n", err)
+			os.Exit(1)
 		}
 	},
 }

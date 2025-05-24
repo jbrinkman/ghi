@@ -54,29 +54,36 @@ func (m LoaderModel) View() string {
 }
 
 // WithSpinner runs the provided function while showing a loading spinner.
-func WithSpinner(ctx context.Context, message string, fn func() error) error {
+// The function can return a value of any type and an error.
+func WithSpinner[T any](ctx context.Context, message string, fn func() (T, error)) (T, error) {
 	loader := NewLoader(message)
 	p := tea.NewProgram(loader)
 
 	// Start the spinner in a goroutine
-	done := make(chan error, 1)
+	type result struct {
+		value T
+		err   error
+	}
+	done := make(chan result, 1)
 	go func() {
-		err := fn()
+		val, err := fn()
 		loader.complete = true
 		p.Send(tea.Quit())
-		done <- err
+		done <- result{value: val, err: err}
 	}()
 
 	// Run the TUI
 	if _, err := p.Run(); err != nil {
-		return fmt.Errorf("failed to run spinner: %w", err)
+		var zero T
+		return zero, fmt.Errorf("failed to run spinner: %w", err)
 	}
 
 	// Return the result from the function
 	select {
-	case err := <-done:
-		return err
+	case res := <-done:
+		return res.value, res.err
 	case <-ctx.Done():
-		return ctx.Err()
+		var zero T
+		return zero, ctx.Err()
 	}
 }
